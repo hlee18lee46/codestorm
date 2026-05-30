@@ -1,176 +1,172 @@
-import Link from "next/link"
-import { 
-  BookOpen, 
-  Clock, 
-  Flame, 
-  Award, 
-  Sparkles,
-  ArrowLeft,
-  Code,
-  Database,
-  Network,
-  Cpu
-} from "lucide-react"
-import { StatCard } from "@/components/stat-card"
-import { ProgressCard } from "@/components/progress-card"
-import { ChatPanel } from "@/components/chat-panel"
-import { AchievementBadge } from "@/components/achievement-badge"
+"use client";
 
-const recentTopics = [
-  { name: "Binary Search Trees", time: "2 hours ago", icon: Code },
-  { name: "Hash Tables", time: "Yesterday", icon: Database },
-  { name: "Graph Algorithms", time: "2 days ago", icon: Network },
-  { name: "Dynamic Programming", time: "3 days ago", icon: Cpu },
-]
+import { useEffect, useState } from "react";
 
-const achievements = [
-  {
-    title: "Algorithms Apprentice",
-    description: "Complete 10 algorithm challenges",
-    unlocked: true,
-    icon: "🧮"
-  },
-  {
-    title: "Data Structures Explorer",
-    description: "Master 5 different data structures",
-    unlocked: false,
-    icon: "🏗️"
-  },
-  {
-    title: "Quiz Master",
-    description: "Score 100% on 10 quizzes",
-    unlocked: false,
-    icon: "🏆"
-  }
-]
+type Session = {
+  ID: string;
+  USER_ID: string;
+  TOPIC: string;
+  QUESTION: string;
+  AI_RESPONSE: string;
+  SCORE: number;
+  CREATED_AT: string;
+  THREAD_ID?: string;
+};
 
 export default function DashboardPage() {
+  const [question, setQuestion] = useState("");
+  const [topic, setTopic] = useState("Algorithms");
+  const [answer, setAnswer] = useState("");
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  async function loadSessions() {
+    const res = await fetch("/api/study-sessions");
+    const data = await res.json();
+    if (data.success) setSessions(data.data);
+  }
+
+  async function askAI() {
+    if (!question.trim()) return;
+
+    setLoading(true);
+    setAnswer("");
+
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        userId: "han123",
+        topic,
+        question,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      setAnswer(data.aiResponse);
+      setQuestion("");
+      await loadSessions();
+    } else {
+      setAnswer(data.error || "Something went wrong.");
+    }
+
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    loadSessions();
+  }, []);
+
   return (
-    <div className="min-h-screen bg-gradient-radial">
-      {/* Navigation */}
-      <nav className="fixed top-0 inset-x-0 z-50 glass">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
-              <Link 
-                href="/" 
-                className="p-2 rounded-lg hover:bg-secondary transition-colors"
+    <main className="min-h-screen bg-gradient-radial p-6 text-white">
+      <div className="mx-auto max-w-7xl space-y-8">
+        <header>
+          <h1 className="text-4xl font-bold">StudyChain AI Dashboard</h1>
+          <p className="text-muted-foreground">
+            Learn with AI, remember with Backboard, track with Snowflake.
+          </p>
+        </header>
+
+        <section className="grid gap-4 md:grid-cols-3">
+          <div className="rounded-2xl border border-white/10 bg-white/10 p-6 backdrop-blur">
+            <p className="text-sm text-muted-foreground">Study Sessions</p>
+            <h2 className="text-3xl font-bold">{sessions.length}</h2>
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-white/10 p-6 backdrop-blur">
+            <p className="text-sm text-muted-foreground">Topics Learned</p>
+            <h2 className="text-3xl font-bold">
+              {new Set(sessions.map((s) => s.TOPIC)).size}
+            </h2>
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-white/10 p-6 backdrop-blur">
+            <p className="text-sm text-muted-foreground">Memory Status</p>
+            <h2 className="text-3xl font-bold">
+              {sessions.some((s) => s.THREAD_ID) ? "Active" : "New"}
+            </h2>
+          </div>
+        </section>
+
+        <section className="grid gap-6 lg:grid-cols-2">
+          <div className="rounded-2xl border border-white/10 bg-white/10 p-6 backdrop-blur">
+            <h2 className="mb-4 text-2xl font-bold">Ask AI Tutor</h2>
+
+            <label className="mb-2 block text-sm">Topic</label>
+            <input
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+              className="mb-4 w-full rounded-lg border border-white/10 bg-black/30 p-3 outline-none"
+            />
+
+            <label className="mb-2 block text-sm">Question</label>
+            <textarea
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              placeholder="Ask anything..."
+              className="min-h-32 w-full rounded-lg border border-white/10 bg-black/30 p-3 outline-none"
+            />
+
+            <button
+              onClick={askAI}
+              disabled={loading}
+              className="mt-4 rounded-lg bg-gradient-to-r from-purple-500 to-blue-500 px-6 py-3 font-semibold disabled:opacity-50"
+            >
+              {loading ? "Thinking..." : "Ask AI"}
+            </button>
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-white/10 p-6 backdrop-blur">
+            <h2 className="mb-4 text-2xl font-bold">AI Response</h2>
+            <div className="max-h-[500px] overflow-y-auto whitespace-pre-wrap rounded-lg bg-black/30 p-4 text-sm leading-6">
+              {answer || "Your AI answer will appear here."}
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-white/10 bg-white/10 p-6 backdrop-blur">
+          <h2 className="mb-4 text-2xl font-bold">Recent Study Sessions</h2>
+
+          <div className="space-y-4">
+            {sessions.length === 0 && (
+              <p className="text-muted-foreground">No study sessions yet.</p>
+            )}
+
+            {sessions.slice(0, 10).map((session) => (
+              <div
+                key={session.ID}
+                className="rounded-xl border border-white/10 bg-black/30 p-4"
               >
-                <ArrowLeft className="w-5 h-5" />
-              </Link>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-                  <Sparkles className="w-5 h-5 text-white" />
+                <div className="mb-2 flex items-center justify-between gap-4">
+                  <h3 className="font-semibold">{session.TOPIC}</h3>
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(session.CREATED_AT).toLocaleString()}
+                  </span>
                 </div>
-                <span className="font-bold text-lg">StudyChain AI</span>
+
+                <p className="mb-2 text-sm">
+                  <span className="font-semibold">Q:</span> {session.QUESTION}
+                </p>
+
+                <p className="line-clamp-3 text-sm text-muted-foreground">
+                  <span className="font-semibold">AI:</span>{" "}
+                  {session.AI_RESPONSE}
+                </p>
+
+                {session.THREAD_ID && (
+                  <p className="mt-2 text-xs text-green-400">
+                    Backboard memory active
+                  </p>
+                )}
               </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-accent/20 text-accent text-sm">
-                <Flame className="w-4 h-4" />
-                <span>7 day streak!</span>
-              </div>
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center font-semibold">
-                SC
-              </div>
-            </div>
+            ))}
           </div>
-        </div>
-      </nav>
-
-      <main className="pt-24 pb-12 px-4">
-        <div className="max-w-7xl mx-auto space-y-8">
-          {/* Welcome */}
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold mb-2">
-              Welcome back, <span className="gradient-text">Scholar</span>
-            </h1>
-            <p className="text-muted-foreground">
-              Keep up the great work! You&apos;re making excellent progress.
-            </p>
-          </div>
-
-          {/* Stats Grid */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard 
-              icon={BookOpen} 
-              title="Topics Learned" 
-              value={24} 
-              trend="+3 this week"
-            />
-            <StatCard 
-              icon={Clock} 
-              title="Study Sessions" 
-              value={47} 
-              trend="+12 this week"
-            />
-            <StatCard 
-              icon={Flame} 
-              title="Current Streak" 
-              value="7 days" 
-            />
-            <StatCard 
-              icon={Award} 
-              title="NFTs Earned" 
-              value={1} 
-              trend="1 pending"
-            />
-          </div>
-
-          {/* Main Content Grid */}
-          <div className="grid lg:grid-cols-3 gap-6">
-            {/* Chat Panel - takes 2 columns */}
-            <div className="lg:col-span-2">
-              <ChatPanel />
-            </div>
-
-            {/* Right Sidebar */}
-            <div className="space-y-6">
-              {/* Progress */}
-              <ProgressCard 
-                title="Next Achievement"
-                label="Data Structures Explorer NFT"
-                current={3}
-                total={5}
-              />
-
-              {/* Recent Topics */}
-              <div className="glass rounded-xl p-6">
-                <h3 className="font-semibold mb-4">Recent Study Topics</h3>
-                <div className="space-y-3">
-                  {recentTopics.map((topic, i) => (
-                    <div 
-                      key={i}
-                      className="flex items-center gap-3 p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors cursor-pointer"
-                    >
-                      <div className="p-2 rounded-lg bg-primary/20">
-                        <topic.icon className="w-4 h-4 text-primary" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{topic.name}</p>
-                        <p className="text-xs text-muted-foreground">{topic.time}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Achievements Section */}
-          <div>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold">NFT Achievements</h2>
-              <span className="text-sm text-muted-foreground">1 of 3 unlocked</span>
-            </div>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {achievements.map((achievement, i) => (
-                <AchievementBadge key={i} {...achievement} />
-              ))}
-            </div>
-          </div>
-        </div>
-      </main>
-    </div>
-  )
+        </section>
+      </div>
+    </main>
+  );
 }
